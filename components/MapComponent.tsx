@@ -266,7 +266,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
           {viewState === ViewState.S0_CITY ? (
              timeMode === TimeMode.PREDICTION ? (
                <>
-                 <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 border border-white/20"></span> 预测过载 (>80%)</div>
+                 <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 border border-white/20"></span> 预测过载 (大于80%)</div>
                  <div className="flex items-center gap-2"><span className="w-3 h-3 bg-blue-500 border border-white/20"></span> 预测正常</div>
                </>
              ) : (
