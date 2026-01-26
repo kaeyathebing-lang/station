@@ -5,9 +5,9 @@ import {
   PIE_DATA_UTILIZATION, PIE_DATA_COST_DIST, PIE_DATA_L2_GRID, 
   PIE_DATA_SERVICE_CAP, PIE_DATA_OPS_STATUS 
 } from '../constants';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip } from 'recharts';
 import StatCard from './StatCard';
-import { Zap, Activity, Filter, Users, Wallet, Lock, Server, BatteryCharging, Percent, AlertTriangle, Leaf, ShieldCheck, Car } from 'lucide-react';
+import { Zap, Users, Wallet, Lock, Server, BatteryCharging, Percent, AlertTriangle, Leaf, ShieldCheck, MapPin } from 'lucide-react';
 
 interface LeftPanelProps {
   viewState: ViewState;
@@ -55,8 +55,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ viewState, selectedStation, selec
           <StatCard title="今日营收" value={Math.floor(45 * m)} unit="万元" icon={<Wallet size={14}/>} variant="success"/>
           <StatCard title="碳减排量" value={Math.floor(120 * m)} unit="吨" icon={<Leaf size={14}/>} variant="success" />
           <StatCard title="额定功率" value={Math.floor(850 * m)} unit="MW" />
-          {/* Changed "Service Index" to "Served Vehicles" */}
-          <StatCard title="累计服务车次" value={Math.floor(8500 * m)} unit="次/日" icon={<Car size={14}/>} />
+          <StatCard title="累计服务车次" value={Math.floor(8500 * m)} unit="次/日" />
         </div>
 
         {/* Section 2: Comprehensive Classification (7 Types) */}
@@ -153,13 +152,13 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ viewState, selectedStation, selec
                    {selectedStation.revenueLevel}级站
                  </span>
                </h2>
-               <div className="flex gap-3 mt-1 text-[10px] text-slate-400 font-mono">
-                 <span>ID: {selectedStation.id}</span>
-                 <span>区域: {selectedStation.districtId.toUpperCase()}</span>
+               {/* Updated: Added Location Tag */}
+               <div className="flex gap-2 mt-1 text-[10px] text-slate-400 font-mono">
+                 <span className="flex items-center gap-1"><MapPin size={10}/> {selectedStation.districtId.toUpperCase()}</span>
+                 <span className="bg-slate-700/50 px-1 rounded text-cyan-300 border border-slate-600/50">{selectedStation.locationLabel}</span>
                </div>
              </div>
              <div className="text-right">
-                {/* Changed "Composite Score" to "Safe Operation Days" */}
                 <div className="text-xs text-slate-500 flex items-center justify-end gap-1"><ShieldCheck size={10}/> 安全运行</div>
                 <div className="text-xl font-bold text-emerald-400 font-mono">1,245<span className="text-xs ml-1 text-slate-500">天</span></div>
              </div>
@@ -208,7 +207,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ viewState, selectedStation, selec
                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{backgroundColor: COLORS[i % COLORS.length]}}></span>
                          {e.name}
                        </span>
-                       <span className="font-mono text-white">{e.value}%</span>
+                       <span className="font-mono text-white">{e.value}</span>
                      </div>
                    ))}
                 </div>

@@ -4,9 +4,6 @@ import { District, Station, TimeMode, PileDetail } from './types';
 export const MAP_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 // 2. Irregular Grid Mesh Covering Viewport
-// Active = Shenzhen Districts (Interactive, Colored)
-// Inactive = Surrounding Areas (Background, Dark)
-
 export const DISTRICTS: District[] = [
   // --- INACTIVE BACKGROUND (Top - Dongguan side) ---
   { 
@@ -26,7 +23,6 @@ export const DISTRICTS: District[] = [
   },
 
   // --- ACTIVE SHENZHEN GRIDS (Irregular shapes) ---
-  
   // West Group
   { 
     id: 'sz_baoan_n', name: '宝安北部', center: [22.72, 113.82], 
@@ -38,7 +34,6 @@ export const DISTRICTS: District[] = [
     capacityHistory: 50, capacityCurrent: 72, capacityPrediction: 85, revenueRank: 'B', isActive: true,
     coordinates: [[22.82, 113.92], [22.80, 114.05], [22.72, 114.02], [22.68, 113.90]]
   },
-  
   // Center Group
   { 
     id: 'sz_longhua', name: '龙华区', center: [22.70, 114.04], 
@@ -50,7 +45,6 @@ export const DISTRICTS: District[] = [
     capacityHistory: 55, capacityCurrent: 70, capacityPrediction: 65, revenueRank: 'B', isActive: true,
     coordinates: [[22.78, 114.15], [22.80, 114.25], [22.65, 114.28], [22.65, 114.12]]
   },
-
   // East Group
   { 
     id: 'sz_longgang_e', name: '龙岗东部', center: [22.73, 114.35], 
@@ -62,7 +56,6 @@ export const DISTRICTS: District[] = [
     capacityHistory: 30, capacityCurrent: 45, capacityPrediction: 42, revenueRank: 'C', isActive: true,
     coordinates: [[22.75, 114.45], [22.75, 114.70], [22.60, 114.60], [22.62, 114.42]]
   },
-
   // South Group (Core)
   { 
     id: 'sz_qianhai', name: '前海中心', center: [22.54, 113.88], 
@@ -79,7 +72,6 @@ export const DISTRICTS: District[] = [
     capacityHistory: 35, capacityCurrent: 50, capacityPrediction: 45, revenueRank: 'C', isActive: true,
     coordinates: [[22.65, 114.12], [22.62, 114.42], [22.60, 114.60], [22.45, 114.55], [22.52, 114.15]]
   },
-
   // --- INACTIVE BACKGROUND (Bottom - Sea) ---
   { 
     id: 'bg_sw', name: '珠江口', center: [22.40, 113.80], 
@@ -93,7 +85,9 @@ export const DISTRICTS: District[] = [
   }
 ];
 
-// Helper to generate piles
+// New: Functional Zone Tags
+export const LOCATION_TAGS = ['核心商业区', '高新科技园', '5A级景区', '高端住宅区', '交通枢纽', '物流园区', '会展中心'];
+
 const generatePiles = (count: number): PileDetail[] => {
   return Array.from({ length: count }, (_, i) => ({
     id: `P-${1000 + i}`,
@@ -107,7 +101,7 @@ const generatePiles = (count: number): PileDetail[] => {
 export const generateStations = (districtId: string): Station[] => {
   const stations: Station[] = [];
   const district = DISTRICTS.find(d => d.id === districtId);
-  if (!district || !district.isActive) return []; // No stations in background grids
+  if (!district || !district.isActive) return []; 
 
   const center = district.center;
   const count = 12 + Math.floor(Math.random() * 6); 
@@ -121,6 +115,7 @@ export const generateStations = (districtId: string): Station[] => {
       id: `${districtId}-s-${i}`,
       districtId,
       name: `${district.name}站 #${i + 1}`,
+      locationLabel: LOCATION_TAGS[Math.floor(Math.random() * LOCATION_TAGS.length)], // Random Tag
       position: [lat, lng],
       type: Math.random() > 0.7 ? 'Dedicated' : Math.random() > 0.4 ? 'Public' : 'Private',
       revenueLevel: revenueRand > 0.8 ? 'S' : revenueRand > 0.5 ? 'A' : revenueRand > 0.2 ? 'B' : 'C',
@@ -138,18 +133,55 @@ export const generateStations = (districtId: string): Station[] => {
   return stations;
 };
 
-// Mock Chart Data
+// Update: Generate 24h Time Series
 export const generateTimeSeries = (points: number, base: number, variance: number) => {
+  // If points is 24, assume it's hourly 00:00 - 23:00
+  // If points is 96, it's 15min intervals
+  const isHourly = points === 24;
+  
   return Array.from({ length: points }, (_, i) => {
     const trend = Math.sin(i * 0.25) * variance;
+    let timeLabel = '';
+    
+    if (isHourly) {
+       timeLabel = `${String(i).padStart(2, '0')}:00`;
+    } else {
+       // 96 points (15 min)
+       const hours = Math.floor(i / 4);
+       const minutes = (i % 4) * 15;
+       timeLabel = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
     return {
-      time: `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`,
+      time: timeLabel,
       value: Math.max(0, base + trend + (Math.random() - 0.5) * (variance/2)), 
       value2: Math.max(0, base * 0.6 + Math.cos(i * 0.25) * variance), 
       value3: Math.max(0, base * 1.1 + trend), 
     };
   });
 };
+
+// New: Spot Price Data (Mock 24h)
+export const SPOT_PRICE_DATA = Array.from({ length: 24 }, (_, i) => {
+  let price = 0.4; // Base price
+  if (i >= 10 && i <= 14) price = 1.2; // Noon Peak
+  else if (i >= 18 && i <= 21) price = 1.5; // Evening Peak
+  else if (i >= 0 && i <= 6) price = 0.25; // Night Valley
+  else price = 0.7; // Flat
+  
+  return {
+    time: `${String(i).padStart(2, '0')}:00`,
+    value: price + (Math.random() - 0.5) * 0.1
+  };
+});
+
+// New: Carbon Factor Data (Mock 24h)
+export const CARBON_FACTOR_DATA = Array.from({ length: 24 }, (_, i) => {
+  return {
+    time: `${String(i).padStart(2, '0')}:00`,
+    value: 0.5 + Math.sin(i * 0.5) * 0.1 + (Math.random() - 0.5) * 0.05 // varies between 0.4 and 0.7
+  };
+});
 
 export const TIME_MODES = [
   { id: TimeMode.HISTORY, label: '历史回溯' },
@@ -159,7 +191,6 @@ export const TIME_MODES = [
 
 export const COLORS = ['#0ea5e9', '#22c55e', '#eab308', '#f43f5e', '#8b5cf6', '#d946ef', '#64748b', '#ec4899', '#14b8a6'];
 
-// --- 1. S2 Station Detailed Cost Structure (8 Items) ---
 export const PIE_DATA_COST = [
   { name: '充电桩资产', value: 30 },
   { name: '变压器/增容', value: 15 },
@@ -171,9 +202,6 @@ export const PIE_DATA_COST = [
   { name: '平台服务费', value: 3 },
 ];
 
-// --- 2. Left Panel Category Data Constants ---
-
-// 1. Power
 export const PIE_DATA_POWER = [
   { name: '直流快充', value: 45 },
   { name: '液冷超充', value: 25 },
@@ -181,7 +209,6 @@ export const PIE_DATA_POWER = [
   { name: 'V2G终端', value: 10 },
 ];
 
-// 2. Function (6 Types)
 export const PIE_DATA_FUNCTION = [
   { name: '专用场站', value: 120 },
   { name: '公共开放', value: 350 },
@@ -191,21 +218,18 @@ export const PIE_DATA_FUNCTION = [
   { name: '高速服务', value: 95 },
 ];
 
-// 3. Utilization
 export const PIE_DATA_UTILIZATION = [
   { name: '高利用率 (>60%)', value: 200 },
   { name: '中利用率 (30-60%)', value: 450 },
   { name: '低利用率 (<30%)', value: 350 },
 ];
 
-// 4. Cost
 export const PIE_DATA_COST_DIST = [
   { name: '高成本站', value: 150 },
   { name: '中成本站', value: 500 },
   { name: '低成本站', value: 350 },
 ];
 
-// 5. L2 Grid
 export const PIE_DATA_L2_GRID = [
   { name: '核心商业网格', value: 320 },
   { name: '居住密集网格', value: 480 },
@@ -213,7 +237,6 @@ export const PIE_DATA_L2_GRID = [
   { name: '其他网格', value: 50 },
 ];
 
-// 6. Service Capability
 export const PIE_DATA_SERVICE_CAP = [
   { name: 'S级卓越', value: 120 },
   { name: 'A级优秀', value: 340 },
@@ -221,7 +244,6 @@ export const PIE_DATA_SERVICE_CAP = [
   { name: 'C级一般', value: 140 },
 ];
 
-// 7. Operational Status
 export const PIE_DATA_OPS_STATUS = [
   { name: '运营正常', value: 850 },
   { name: '部分故障', value: 120 },

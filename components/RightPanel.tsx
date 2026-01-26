@@ -1,8 +1,8 @@
 import React from 'react';
 import { ViewState, TimeMode, AssessmentTag } from '../types';
-import { generateTimeSeries } from '../constants';
+import { generateTimeSeries, SPOT_PRICE_DATA, CARBON_FACTOR_DATA } from '../constants';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, LineChart, Line, Legend, BarChart, Bar } from 'recharts';
-import { AlertCircle, TrendingUp, DollarSign, FileText, CheckCircle, AlertTriangle, XCircle, Users, Leaf } from 'lucide-react';
+import { AlertCircle, TrendingUp, DollarSign, FileText, CheckCircle, AlertTriangle, XCircle, Users, Leaf, Zap } from 'lucide-react';
 
 interface RightPanelProps {
   viewState: ViewState;
@@ -10,10 +10,11 @@ interface RightPanelProps {
 }
 
 const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
-  const dataPoints = 24;
+  // S0/S1 use 24 points (Hourly), S2 uses 24 points for consistency in this update
+  const dataPoints = 24; 
   const isStation = viewState === ViewState.S2_STATION;
   
-  // Data Generation based on TimeMode to ensure visual consistency
+  // Data Generation based on TimeMode
   const baseValue = timeMode === TimeMode.PREDICTION ? 120 : 80;
   const variance = timeMode === TimeMode.CURRENT ? 20 : 5;
   
@@ -28,14 +29,14 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
     ];
 
     return (
-      <div className="bg-slate-800 p-3 rounded-lg border border-slate-600 mb-3 shadow-lg shrink-0">
-        <h3 className="text-xs font-bold text-white mb-2 flex items-center gap-2">
-          <FileText size={12} className="text-cyan-400"/> 智能经营诊断
+      <div className="bg-slate-800 p-2 rounded-lg border border-slate-600 mb-2 shadow-lg shrink-0">
+        <h3 className="text-[10px] font-bold text-white mb-1 flex items-center gap-2">
+          <FileText size={10} className="text-cyan-400"/> 智能经营诊断
         </h3>
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-1 gap-1.5">
           {tags.map((tag, i) => (
-            <div key={i} className="flex justify-between items-center bg-slate-900/50 p-2 rounded border-l-2 border-slate-600">
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
+            <div key={i} className="flex justify-between items-center bg-slate-900/50 p-1.5 rounded border-l-2 border-slate-600">
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
                 tag.type === 'danger' ? 'text-rose-400 bg-rose-900/20' :
                 tag.type === 'warning' ? 'text-amber-400 bg-amber-900/20' :
                 'text-blue-400 bg-blue-900/20'
@@ -43,7 +44,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
                 {tag.type === 'danger' ? <XCircle size={8}/> : tag.type === 'warning' ? <AlertTriangle size={8}/> : <CheckCircle size={8}/>}
                 {tag.label}
               </span>
-              <span className="text-[10px] text-slate-500 truncate max-w-[120px]">{tag.evidence}</span>
+              <span className="text-[9px] text-slate-500 truncate max-w-[120px]">{tag.evidence}</span>
             </div>
           ))}
         </div>
@@ -52,7 +53,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
   };
 
   return (
-    <div className="flex flex-col gap-3 h-full overflow-hidden">
+    <div className="flex flex-col gap-2 h-full overflow-hidden">
       <div className="mb-1 flex justify-between items-end shrink-0">
         <h2 className="text-base font-bold text-white flex items-center gap-2">
           <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
@@ -69,15 +70,18 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
 
       {isStation && renderAssessmentTags()}
 
-      {/* Chart 1: Revenue or Load (Flex 1) */}
-      <div className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
-        <h3 className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2 shrink-0">
-          {isStation ? <DollarSign size={12} className="text-emerald-400"/> : <TrendingUp size={12} className="text-emerald-400"/>}
+      {/* S0/S1: 4 Charts Layout (Revenue, Users, Spot Price, Carbon) */}
+      {/* S2: 3 Charts Layout (Assessment, Revenue, Users, Carbon) - Station keeps simplified layout but changes bottom chart */}
+      
+      {/* Chart 1: Revenue or Load */}
+      <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
+        <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2 shrink-0">
+          {isStation ? <DollarSign size={10} className="text-emerald-400"/> : <TrendingUp size={10} className="text-emerald-400"/>}
           {isStation ? '实时充电流水曲线' : '区域营收趋势'}
         </h3>
         <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={mainSeriesData} margin={{top: 5, right: 0, left: -20, bottom: 0}}>
+            <AreaChart data={mainSeriesData} margin={{top: 2, right: 0, left: -25, bottom: 0}}>
               <defs>
                 <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -85,63 +89,72 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="time" tick={{fontSize: 9, fill: '#64748b'}} stroke="#475569" interval={5} />
-              <YAxis tick={{fontSize: 9, fill: '#64748b'}} stroke="#475569" />
-              <ReTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '10px', padding: '5px' }} itemStyle={{padding: 0}} />
-              <Area 
-                type="monotone" 
-                dataKey="value" 
-                name="营收额" 
-                stroke="#10b981" 
-                strokeWidth={2} 
-                fill="url(#colorRev)" 
-                animationDuration={1000}
-              />
-              {timeMode === TimeMode.PREDICTION && (
-                 <Area type="monotone" dataKey="value3" name="预测营收" stroke="#a855f7" strokeDasharray="3 3" fill="none" />
-              )}
+              <XAxis dataKey="time" tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" interval={5} />
+              <YAxis tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" />
+              <ReTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} itemStyle={{padding: 0}} />
+              <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={1.5} fill="url(#colorRev)" animationDuration={1000} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Chart 2: User Activity / Queue (Flex 1) */}
-      <div className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
-        <h3 className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2 shrink-0">
-          <Users size={12} className="text-blue-400"/> 
+      {/* Chart 2: User Activity */}
+      <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
+        <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2 shrink-0">
+          <Users size={10} className="text-blue-400"/> 
           {isStation ? '用户排队与在桩热度' : '区域用户活跃度'}
         </h3>
         <div className="flex-1 w-full min-h-0">
            <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={orderSeriesData} margin={{top: 5, right: 0, left: -20, bottom: 0}}>
+            <BarChart data={orderSeriesData} margin={{top: 2, right: 0, left: -25, bottom: 0}}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="time" tick={{fontSize: 9, fill: '#64748b'}} stroke="#475569" interval={5} />
-              <YAxis tick={{fontSize: 9, fill: '#64748b'}} stroke="#475569" />
-              <ReTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '10px' }} />
-              <Bar dataKey="value" name="在桩人数" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="value2" name="排队人数" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+              <XAxis dataKey="time" tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" interval={5} />
+              <YAxis tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" />
+              <ReTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} />
+              <Bar dataKey="value" fill="#3b82f6" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Chart 3: Carbon Reduction (Fixed Height) */}
-      <div className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 flex-none h-[120px] flex flex-col shrink-0">
-        <h3 className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">
-          <Leaf size={12} className="text-emerald-400"/> 碳减排趋势 (kg)
+      {/* New Chart 3: Spot Market Price (Only for S0/S1) */}
+      {!isStation && (
+        <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
+          <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2 shrink-0">
+            <Zap size={10} className="text-amber-400"/> 现货市场电价 (元/kWh)
+          </h3>
+          <div className="flex-1 w-full min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={SPOT_PRICE_DATA} margin={{top: 2, right: 0, left: -25, bottom: 0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <XAxis dataKey="time" tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" interval={5} />
+                <YAxis tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" domain={[0, 2]} />
+                <ReTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} itemStyle={{padding: 0}} />
+                <Line type="stepAfter" dataKey="value" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Chart 4 (Bottom): Regional Carbon Emission Factor (Common to All Views) */}
+      <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-none h-[110px] flex flex-col shrink-0">
+        <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2">
+          <Leaf size={10} className="text-emerald-400"/> 区域碳排放因子 (kg/kWh)
         </h3>
          <div className="flex-1 w-full">
            <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={mainSeriesData} margin={{top: 5, right: 0, left: -20, bottom: 0}}>
+            <AreaChart data={CARBON_FACTOR_DATA} margin={{top: 2, right: 0, left: -25, bottom: 0}}>
               <defs>
                 <linearGradient id="colorCarbon" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
                   <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <XAxis dataKey="time" tick={{fontSize: 9, fill: '#64748b'}} stroke="#475569" interval={5} />
-              <YAxis tick={{fontSize: 9, fill: '#64748b'}} stroke="#475569" />
-              <Area type="monotone" dataKey="value2" stroke="#22c55e" strokeWidth={2} fill="url(#colorCarbon)" dot={false} />
+              <XAxis dataKey="time" tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" interval={5} />
+              <YAxis tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" domain={[0.3, 0.8]} />
+              <ReTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} itemStyle={{padding: 0}} />
+              <Area type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={1.5} fill="url(#colorCarbon)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

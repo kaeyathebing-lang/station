@@ -36,6 +36,7 @@ export interface Station {
   id: string;
   districtId: string;
   name: string;
+  locationLabel: string; // New: Functional Zone Tag (e.g., Commercial, Scenic)
   position: [number, number]; 
   type: 'Public' | 'Private' | 'Dedicated';
   // New Operational Fields
