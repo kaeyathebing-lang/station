@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Station Service Capability Assessment Platform",
+  "description": "A comprehensive dashboard for assessing charging station service capabilities with multi-level drill-down (City > District > Station), dynamic temporal analysis, and operational diagnostics.",
+  "requestFramePermissions": []
+}
