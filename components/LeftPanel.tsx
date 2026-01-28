@@ -125,8 +125,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ viewState, selectedStation, selec
 
         {/* Section 3: Charging Pile Status Monitoring (Horizontal Bars) */}
         <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700 flex-1 flex flex-col min-h-0">
-           <h3 className="text-[10px] font-bold text-slate-300 mb-2 flex items-center gap-2 shrink-0">
-              <BatteryCharging size={10} className="text-cyan-400"/> 充电桩状态监控
+           {/* Update 4: Font size consistency (changed from text-[10px] to text-xs) */}
+           <h3 className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2 shrink-0">
+              <BatteryCharging size={12} className="text-cyan-400"/> 充电桩状态监控
            </h3>
            <div className="flex-1 w-full min-h-0">
              <ResponsiveContainer width="100%" height="100%">
@@ -158,7 +159,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ viewState, selectedStation, selec
                     <LabelList 
                       dataKey="value" 
                       position="right" 
-                      formatter={(val: number) => `${val} (${totalPiles > 0 ? (val/totalPiles*100).toFixed(1) : 0}%)`}
+                      /* Update 4: Added unit "个" */
+                      formatter={(val: number) => `${val}个 (${totalPiles > 0 ? (val/totalPiles*100).toFixed(1) : 0}%)`}
                       style={{ fill: '#e2e8f0', fontSize: '10px', fontWeight: 500 }}
                     />
                   </Bar>
@@ -174,6 +176,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ viewState, selectedStation, selec
   // S2: Dense Station Detail
   if (selectedStation) {
     const totalCost = selectedStation.fixedCost + selectedStation.operationalCost;
+    // Calculate daily avg op cost (assuming yearly op cost)
+    const dailyOpCost = (selectedStation.operationalCost * 10000 / 365).toFixed(0);
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
@@ -213,18 +217,35 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ viewState, selectedStation, selec
         {/* Scrollable Content Container */}
         <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2 min-h-0">
           
-          {/* Row 1: Total Cost (Prominent) */}
-          <div className="bg-gradient-to-br from-indigo-900/40 to-slate-800 p-3 rounded border border-indigo-500/30 shrink-0 flex items-center justify-between">
-             <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-500/20 rounded-full"><CircleDollarSign className="text-indigo-400" size={18}/></div>
-                <div>
-                   <div className="text-[10px] text-indigo-300 font-bold uppercase">全生命周期总成本</div>
-                   <div className="text-xs text-slate-400">Fixed + Operational</div>
-                </div>
+          {/* Row 1: Total Cost & Daily Op Cost (Update 2) */}
+          <div className="bg-gradient-to-br from-indigo-900/40 to-slate-800 p-3 rounded border border-indigo-500/30 shrink-0 flex items-center justify-between gap-4">
+             {/* Total Cost Part */}
+             <div className="flex flex-col flex-1">
+                 <div className="flex items-center gap-2 mb-1">
+                    <div className="p-1.5 bg-indigo-500/20 rounded-full"><CircleDollarSign className="text-indigo-400" size={14}/></div>
+                    <div className="text-[10px] text-indigo-300 font-bold uppercase">全生命周期总成本</div>
+                 </div>
+                 <div className="text-right">
+                    <span className="text-xl font-black text-white tracking-tight">{totalCost}</span>
+                    <span className="text-[10px] text-indigo-300 ml-1">万元</span>
+                 </div>
+                 <div className="text-[9px] text-slate-500 text-right">Fixed + Operational</div>
              </div>
-             <div className="text-right">
-                <span className="text-2xl font-black text-white tracking-tight">{totalCost}</span>
-                <span className="text-xs text-indigo-300 ml-1">万元</span>
+             
+             {/* Divider */}
+             <div className="w-px h-10 bg-indigo-500/30"></div>
+
+             {/* Daily Op Cost Part (New) */}
+             <div className="flex flex-col flex-1">
+                 <div className="flex items-center gap-2 mb-1">
+                    <div className="p-1.5 bg-cyan-500/20 rounded-full"><Wallet className="text-cyan-400" size={14}/></div>
+                    <div className="text-[10px] text-cyan-300 font-bold uppercase">日均运营成本</div>
+                 </div>
+                 <div className="text-right">
+                    <span className="text-xl font-black text-white tracking-tight">{dailyOpCost}</span>
+                    <span className="text-[10px] text-cyan-300 ml-1">元/天</span>
+                 </div>
+                 <div className="text-[9px] text-slate-500 text-right">Operational / 365</div>
              </div>
           </div>
 

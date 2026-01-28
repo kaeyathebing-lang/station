@@ -208,6 +208,23 @@ export const generateTimeSeries = (points: number, base: number, variance: numbe
   });
 };
 
+// Generate Power Load vs Capacity (Area + Line)
+export const generatePowerCapacitySeries = (points: number, capacity: number) => {
+  return Array.from({ length: points }, (_, i) => {
+    // Mock load profile
+    const baseLoad = capacity * 0.4;
+    // Two peaks
+    const peak = (i > 9 && i < 14) || (i > 18 && i < 22) ? capacity * 0.4 : 0;
+    const random = (Math.random() - 0.5) * (capacity * 0.1);
+    
+    return {
+      time: `${String(i).padStart(2, '0')}:00`,
+      value: capacity, // The Limit (Constant or slightly variable, typically constant for capacity)
+      value2: Math.max(0, baseLoad + peak + random) // The Actual Load
+    };
+  });
+};
+
 // Spot Price Data
 export const SPOT_PRICE_DATA = Array.from({ length: 24 }, (_, i) => {
   let price = 0.4; 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewState, TimeMode, AssessmentTag } from '../types';
-import { generateTimeSeries, SPOT_PRICE_DATA, CARBON_FACTOR_DATA, generateOrderSeries, generateServiceCapSeries } from '../constants';
+import { generateTimeSeries, SPOT_PRICE_DATA, CARBON_FACTOR_DATA, generateOrderSeries, generateServiceCapSeries, generatePowerCapacitySeries } from '../constants';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, LineChart, Line, Legend, BarChart, Bar, ComposedChart } from 'recharts';
 import { AlertCircle, TrendingUp, DollarSign, FileText, CheckCircle, AlertTriangle, XCircle, Users, Leaf, Zap, BarChart3, Activity } from 'lucide-react';
 
@@ -21,11 +21,9 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
   const orderCountData = generateOrderSeries(dataPoints, 45, 10);
   const serviceCapData = generateServiceCapSeries(dataPoints);
 
-  // Ensure "User Activity" (People count) is integer
-  const userActivityData = generateTimeSeries(dataPoints, 40, 15).map(d => ({
-    ...d,
-    value: Math.round(d.value)
-  }));
+  // New Data for Power vs Capacity (Request 1 & 3)
+  const regionalPowerData = generatePowerCapacitySeries(dataPoints, 12000); // 12000kW Regional Cap
+  const stationPowerData = generatePowerCapacitySeries(dataPoints, 800);   // 800kW Station Cap
 
   const renderAssessmentTags = () => {
     const tags: AssessmentTag[] = [
@@ -79,7 +77,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
         {renderAssessmentTags()}
 
         {/* Chart 1: Real-time Revenue (Flow) */}
-        <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-none h-[180px] flex flex-col">
+        <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-none h-[150px] flex flex-col">
            <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2 shrink-0">
             <DollarSign size={10} className="text-emerald-400"/> 实时充电流水曲线
           </h3>
@@ -106,14 +104,14 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
           </div>
         </div>
 
-        {/* Chart 2: Station Service Capability (Composite) - Renamed & Smoothed */}
+        {/* Chart 2: Station Service Capability (Maximized Width) */}
         <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
            <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2 shrink-0">
             <Activity size={10} className="text-blue-400"/> 本站服务能力
           </h3>
           <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={serviceCapData} margin={{top: 5, right: 0, left: -15, bottom: 0}}>
+              <ComposedChart data={serviceCapData} margin={{top: 10, right: -10, left: -28, bottom: 0}}>
                  <defs>
                    <linearGradient id="availGradient" x1="0" y1="0" x2="0" y2="1">
                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -125,20 +123,61 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
                  <YAxis yAxisId="left" label={{ value: '利用率%', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 8 }} tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" />
                  <YAxis yAxisId="right" orientation="right" label={{ value: '数量', angle: 90, position: 'insideRight', fill: '#64748b', fontSize: 8 }} tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569"/>
                  <ReTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} />
-                 <Legend verticalAlign="top" height={20} iconSize={10} wrapperStyle={{fontSize: '9px'}}/>
-                 
-                 {/* Available Piles: Area Background (Blue) - Changed type to monotone for smoothness */}
+                 <Legend verticalAlign="top" height={20} iconSize={8} wrapperStyle={{fontSize: '9px', top: -5}}/>
                  <Area yAxisId="right" type="monotone" dataKey="value2" name="可用桩数" fill="url(#availGradient)" stroke="#3b82f6" strokeWidth={1} fillOpacity={1}/>
-                 
-                 {/* Queue: Bar (Orange/Red) - Thicker bars */}
                  <Bar yAxisId="right" dataKey="value3" name="排队人数" fill="#f97316" barSize={12} radius={[2,2,0,0]} fillOpacity={0.9} />
-                 
-                 {/* Utilization: Line (Green) - Thicker, smooth line on top */}
-                 <Line yAxisId="left" type="monotone" dataKey="value" name="利用率%" stroke="#4ade80" strokeWidth={3} dot={{r: 2, fill: '#4ade80'}} activeDot={{r: 4}} />
+                 <Line yAxisId="left" type="monotone" dataKey="value" name="利用率%" stroke="#4ade80" strokeWidth={2} dot={{r: 1, fill: '#4ade80'}} activeDot={{r: 3}} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* Chart 3: Station Power & Capacity Limit (Legend moved to Header) */}
+        <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
+          <div className="flex justify-between items-center mb-1 shrink-0">
+            <h3 className="text-[10px] font-bold text-slate-200 flex items-center gap-2">
+              <Zap size={10} className="text-amber-400"/> 场站功率和容量上限
+            </h3>
+            {/* Custom Legend */}
+            <div className="flex items-center gap-3 text-[9px] text-slate-400">
+               <div className="flex items-center gap-1">
+                 <div className="w-3 h-[2px] bg-red-500 border-t border-red-500 border-dashed"></div>
+                 <span>容量上限</span>
+               </div>
+               <div className="flex items-center gap-1">
+                 <div className="w-2.5 h-2.5 bg-sky-500/50 border border-sky-500 rounded-[1px]"></div>
+                 <span>实时负荷</span>
+               </div>
+            </div>
+          </div>
+          
+          <div className="flex-1 w-full min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={stationPowerData} margin={{top: 5, right: 0, left: -10, bottom: 0}}>
+                <defs>
+                  <linearGradient id="powerGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <XAxis dataKey="time" tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" interval={5} />
+                <YAxis label={{ value: '功率(kW)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 8 }} tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" />
+                <ReTooltip 
+                  formatter={(value: number) => value.toFixed(0) + ' kW'}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} 
+                  itemStyle={{padding: 0}} 
+                />
+                
+                {/* Limit: Bright Red Dashed Line */}
+                <Line type="step" dataKey="value" name="容量上限" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} legendType="none" />
+                {/* Load: Area with gradient */}
+                <Area type="monotone" dataKey="value2" name="实时功率" stroke="#0ea5e9" strokeWidth={2} fill="url(#powerGradient)" legendType="none" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
       </div>
     );
   }
@@ -160,7 +199,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
         </div>
       </div>
 
-      {/* Chart 1: Created Orders (Bar) - Replaces Revenue */}
+      {/* Chart 1: Created Orders (Bar) */}
       <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
         <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2 shrink-0">
           <BarChart3 size={10} className="text-emerald-400"/> 创建订单数
@@ -178,20 +217,48 @@ const RightPanel: React.FC<RightPanelProps> = ({ viewState, timeMode }) => {
         </div>
       </div>
 
-      {/* Chart 2: User Activity (Bar) */}
+      {/* Chart 2: Regional Power & Capacity Limit (Legend moved to Header) */}
       <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 flex-1 flex flex-col min-h-0">
-        <h3 className="text-[10px] font-bold text-slate-200 mb-1 flex items-center gap-2 shrink-0">
-          <Users size={10} className="text-blue-400"/> 区域用户活跃度
-        </h3>
+        <div className="flex justify-between items-center mb-1 shrink-0">
+           <h3 className="text-[10px] font-bold text-slate-200 flex items-center gap-2">
+            <Zap size={10} className="text-blue-400"/> 区域功率和容量上限
+           </h3>
+           {/* Custom Legend */}
+           <div className="flex items-center gap-3 text-[9px] text-slate-400">
+             <div className="flex items-center gap-1">
+               <div className="w-3 h-[2px] bg-red-500 border-t border-red-500 border-dashed"></div>
+               <span>容量上限</span>
+             </div>
+             <div className="flex items-center gap-1">
+               <div className="w-2.5 h-2.5 bg-blue-500/50 border border-blue-500 rounded-[1px]"></div>
+               <span>实时负荷</span>
+             </div>
+           </div>
+        </div>
+
         <div className="flex-1 w-full min-h-0">
            <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={userActivityData} margin={{top: 2, right: 0, left: -10, bottom: 0}}>
+            <ComposedChart data={regionalPowerData} margin={{top: 5, right: 0, left: -10, bottom: 0}}>
+              <defs>
+                  <linearGradient id="regPowerGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
               <XAxis dataKey="time" tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" interval={5} />
-              <YAxis label={{ value: '人数', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 8 }} tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" />
-              <ReTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} />
-              <Bar dataKey="value" name="活跃人数" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-            </BarChart>
+              <YAxis label={{ value: '功率(kW)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 8 }} tick={{fontSize: 8, fill: '#64748b'}} stroke="#475569" />
+              <ReTooltip 
+                formatter={(value: number) => value.toFixed(0) + ' kW'}
+                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '9px', padding: '2px' }} 
+                itemStyle={{padding: 0}} 
+              />
+              
+              {/* Limit: Bright Red Dashed Line */}
+              <Line type="step" dataKey="value" name="容量上限" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} legendType="none" />
+              {/* Load: Blue Area */}
+              <Area type="monotone" dataKey="value2" name="实时负荷" stroke="#3b82f6" strokeWidth={2} fill="url(#regPowerGradient)" legendType="none" />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
