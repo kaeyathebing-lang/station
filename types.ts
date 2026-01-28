@@ -32,31 +32,45 @@ export interface PileDetail {
   currentUser?: string;
 }
 
+export interface StaffRole {
+  role: string;
+  count: number;
+  salary: number; // Monthly RMB
+}
+
 export interface Station {
   id: string;
   districtId: string;
   name: string;
-  locationLabel: string; // New: Functional Zone Tag (e.g., Commercial, Scenic)
+  locationLabel: string; 
   position: [number, number]; 
   type: 'Public' | 'Private' | 'Dedicated';
-  // New Operational Fields
-  revenueLevel: 'S' | 'A' | 'B' | 'C'; // S=High Profit, C=Loss
+  // Features
+  features: string[]; // e.g. "Convenience Store", "Restroom"
+  
+  // Operational Fields
+  revenueLevel: 'S' | 'A' | 'B' | 'C'; 
   fixedCost: number; // Wan Yuan
   operationalCost: number; // Wan Yuan/Year
   parkingFee: number;
   serviceFee: number;
   hasGroundLock: boolean;
   groundLockCoverage: number; // %
-  staffCount: number;
-  avgStaffSalary: number; // Yuan
+  
+  // Detailed Staff
+  staffDetails: StaffRole[];
+  
   piles: PileDetail[];
+  // Legacy fields kept for compatibility if needed, but we use staffDetails now
+  staffCount: number;
+  avgStaffSalary: number; 
 }
 
 export interface ChartDataPoint {
   time: string;
-  value: number; // Main metric (e.g., Capacity or Revenue)
-  value2?: number; // Secondary (e.g., Orders)
-  value3?: number; // Prediction
+  value: number; // Main metric 
+  value2?: number; // Secondary 
+  value3?: number; // Tertiary
 }
 
 export interface AssessmentTag {

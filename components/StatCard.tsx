@@ -6,19 +6,30 @@ interface StatCardProps {
   unit?: string;
   trend?: number; // percentage
   icon?: React.ReactNode;
-  variant?: 'default' | 'alert' | 'success';
+  variant?: 'default' | 'alert' | 'success' | 'warning';
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, unit, trend, icon, variant = 'default' }) => {
-  const borderColor = 
-    variant === 'alert' ? 'border-rose-500/50' : 
-    variant === 'success' ? 'border-emerald-500/50' : 
-    'border-slate-700';
-    
-  const bgGradient = 
-    variant === 'alert' ? 'bg-gradient-to-br from-rose-900/20 to-slate-800' :
-    variant === 'success' ? 'bg-gradient-to-br from-emerald-900/20 to-slate-800' :
-    'bg-slate-800/50';
+  let borderColor = 'border-slate-700';
+  let bgGradient = 'bg-slate-800/50';
+  
+  switch (variant) {
+    case 'alert':
+      borderColor = 'border-rose-500/50';
+      bgGradient = 'bg-gradient-to-br from-rose-900/20 to-slate-800';
+      break;
+    case 'success':
+      borderColor = 'border-emerald-500/50';
+      bgGradient = 'bg-gradient-to-br from-emerald-900/20 to-slate-800';
+      break;
+    case 'warning':
+      borderColor = 'border-amber-500/50';
+      bgGradient = 'bg-gradient-to-br from-amber-900/20 to-slate-800';
+      break;
+    default:
+      borderColor = 'border-slate-700';
+      bgGradient = 'bg-slate-800/50';
+  }
 
   return (
     <div className={`p-3 rounded-lg border ${borderColor} ${bgGradient} backdrop-blur-sm shadow-sm relative overflow-hidden group`}>

@@ -44,6 +44,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
     return generateStations(selectedDistrictId);
   }, [selectedDistrictId]);
 
+  // Helper for coordinate validation
+  const isValidLatLng = (pos: any): pos is [number, number] => {
+    return Array.isArray(pos) && pos.length === 2 && typeof pos[0] === 'number' && !isNaN(pos[0]) && typeof pos[1] === 'number' && !isNaN(pos[1]);
+  };
+
   useEffect(() => {
     if (!mapContainer.current) return;
     if (mapInstance.current) return;
@@ -83,10 +88,16 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
     if (viewState === ViewState.S0_CITY) {
       DISTRICTS.forEach(district => {
+        // Validation: Ensure center is valid
+        if (!isValidLatLng(district.center)) return;
         
+        // Filter valid coordinates for polygon
+        const validCoordinates = (district.coordinates || []).filter(isValidLatLng);
+        if (validCoordinates.length < 3) return; // Need at least 3 points for a polygon
+
         if (!district.isActive) {
           // Render Background Grids (Inactive)
-          L.polygon(district.coordinates, {
+          L.polygon(validCoordinates, {
             color: '#334155', // Slate-700
             weight: 1,
             fillColor: '#0f172a', // Slate-950
@@ -121,7 +132,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
            opacity = 0.4 + (capacity / 200);
         }
 
-        const polygon = L.polygon(district.coordinates, {
+        const polygon = L.polygon(validCoordinates, {
           color: '#1e293b', 
           weight: 1,
           fillColor: color,
@@ -141,6 +152,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
           polygon.setStyle({ weight: 1, color: '#1e293b', fillOpacity: opacity });
         });
 
+        layerGroup.addLayer(polygon);
+
         // HTML Label at Center
         const labelIcon = L.divIcon({
           className: 'bg-transparent',
@@ -154,20 +167,22 @@ const MapComponent: React.FC<MapComponentProps> = ({
         });
         L.marker(district.center, { icon: labelIcon, interactive: false }).addTo(layerGroup);
 
-        layerGroup.addLayer(polygon);
       });
     } else if (selectedDistrictId) {
        // S1/S2: Focus mode.
        const district = DISTRICTS.find(d => d.id === selectedDistrictId);
        if (district) {
-         // Draw outline
-         L.polygon(district.coordinates, {
-            color: '#38bdf8',
-            weight: 3,
-            fillColor: '#000',
-            fillOpacity: 0.1,
-            interactive: false
-         }).addTo(layerGroup);
+         const validCoordinates = (district.coordinates || []).filter(isValidLatLng);
+         if (validCoordinates.length >= 3) {
+            // Draw outline
+            L.polygon(validCoordinates, {
+                color: '#38bdf8',
+                weight: 3,
+                fillColor: '#000',
+                fillOpacity: 0.1,
+                interactive: false
+            }).addTo(layerGroup);
+         }
        }
     }
   }, [viewState, timeMode, selectedDistrictId, onDistrictClick]);
@@ -180,6 +195,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
     if (viewState === ViewState.S1_DISTRICT || viewState === ViewState.S2_STATION) {
       currentStations.forEach(station => {
+        // Validation for station position
+        if (!isValidLatLng(station.position)) return;
+
         const isSelected = station.id === selectedStationId;
         
         // Color by Revenue Level
@@ -222,11 +240,15 @@ const MapComponent: React.FC<MapComponentProps> = ({
   useEffect(() => {
     if (!mapInstance.current) return;
     const map = mapInstance.current;
+    
     if (viewState === ViewState.S0_CITY) {
       map.flyTo([22.65, 114.15], 10, { duration: 1 });
     } else if (selectedDistrictId) {
       const district = DISTRICTS.find(d => d.id === selectedDistrictId);
-      if (district) map.flyTo(district.center, 13, { duration: 1 });
+      // Validate center before flying
+      if (district && isValidLatLng(district.center)) {
+        map.flyTo(district.center, 13, { duration: 1 });
+      }
     }
   }, [viewState, selectedDistrictId]);
 
@@ -266,7 +288,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
           {viewState === ViewState.S0_CITY ? (
              timeMode === TimeMode.PREDICTION ? (
                <>
-                 <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 border border-white/20"></span> 预测过载 (大于80%)</div>
+                 <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 border border-white/20"></span> 预测过载 (>80%)</div>
                  <div className="flex items-center gap-2"><span className="w-3 h-3 bg-blue-500 border border-white/20"></span> 预测正常</div>
                </>
              ) : (

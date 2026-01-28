@@ -1,4 +1,4 @@
-import { District, Station, TimeMode, PileDetail } from './types';
+import { District, Station, TimeMode, PileDetail, StaffRole } from './types';
 
 // 1. Map Tile: OpenStreetMap Mapnik
 export const MAP_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -87,6 +87,34 @@ export const DISTRICTS: District[] = [
 
 // New: Functional Zone Tags
 export const LOCATION_TAGS = ['核心商业区', '高新科技园', '5A级景区', '高端住宅区', '交通枢纽', '物流园区', '会展中心'];
+const FEATURE_POOL = ['支持线上操作', '附近有便利店', '24h卫生间', '免费Wifi', '餐饮休息室', '自动洗车机', '雨棚覆盖', '视频监控'];
+
+const STAFF_ROLES_POOL = [
+  { name: '站长', baseSalary: 12000 },
+  { name: '值班长', baseSalary: 9500 },
+  { name: '高压电工', baseSalary: 8500 },
+  { name: '弱电技师', baseSalary: 8000 },
+  { name: '安保主管', baseSalary: 6500 },
+  { name: '安保员', baseSalary: 5500 },
+  { name: '保洁主管', baseSalary: 5000 },
+  { name: '保洁员', baseSalary: 4200 },
+  { name: '客服专员', baseSalary: 6000 },
+  { name: 'IT运维', baseSalary: 11000 }
+];
+
+const generateStaff = (): StaffRole[] => {
+  // Randomly select 2 to 5 distinct roles for this station
+  const numRoles = 2 + Math.floor(Math.random() * 4);
+  const shuffledRoles = [...STAFF_ROLES_POOL].sort(() => 0.5 - Math.random());
+  const selectedRoles = shuffledRoles.slice(0, numRoles);
+
+  return selectedRoles.map(roleDef => ({
+    role: roleDef.name,
+    count: 1 + Math.floor(Math.random() * 3), // 1-3 people
+    // Salary jitter: +/- 500
+    salary: roleDef.baseSalary + (Math.floor(Math.random() * 11) - 5) * 100
+  }));
+};
 
 const generatePiles = (count: number): PileDetail[] => {
   return Array.from({ length: count }, (_, i) => ({
@@ -111,63 +139,82 @@ export const generateStations = (districtId: string): Station[] => {
     const lng = center[1] + (Math.random() - 0.5) * 0.08;
     const revenueRand = Math.random();
     
+    // Pick 3 random features
+    const shuffledFeatures = [...FEATURE_POOL].sort(() => 0.5 - Math.random());
+
     stations.push({
       id: `${districtId}-s-${i}`,
       districtId,
       name: `${district.name}站 #${i + 1}`,
-      locationLabel: LOCATION_TAGS[Math.floor(Math.random() * LOCATION_TAGS.length)], // Random Tag
+      locationLabel: LOCATION_TAGS[Math.floor(Math.random() * LOCATION_TAGS.length)], 
       position: [lat, lng],
       type: Math.random() > 0.7 ? 'Dedicated' : Math.random() > 0.4 ? 'Public' : 'Private',
+      features: shuffledFeatures.slice(0, 3),
       revenueLevel: revenueRand > 0.8 ? 'S' : revenueRand > 0.5 ? 'A' : revenueRand > 0.2 ? 'B' : 'C',
-      fixedCost: Math.floor(100 + Math.random() * 200),
-      operationalCost: Math.floor(20 + Math.random() * 30),
+      fixedCost: Math.floor(150 + Math.random() * 300),
+      operationalCost: Math.floor(30 + Math.random() * 50),
       parkingFee: 10,
       serviceFee: 0.6,
       hasGroundLock: Math.random() > 0.3,
       groundLockCoverage: Math.floor(40 + Math.random() * 60),
-      staffCount: 2 + Math.floor(Math.random() * 4),
-      avgStaffSalary: 6500 + Math.floor(Math.random() * 2000),
-      piles: generatePiles(10 + Math.floor(Math.random() * 20))
+      staffDetails: generateStaff(),
+      piles: generatePiles(10 + Math.floor(Math.random() * 20)),
+      staffCount: 0, // Computed from details later if needed, but redundant now
+      avgStaffSalary: 0 // Redundant
     });
   }
   return stations;
 };
 
-// Update: Generate 24h Time Series
-export const generateTimeSeries = (points: number, base: number, variance: number) => {
-  // If points is 24, assume it's hourly 00:00 - 23:00
-  // If points is 96, it's 15min intervals
-  const isHourly = points === 24;
-  
+// Generate 24h Order Counts (Integers)
+export const generateOrderSeries = (points: number, base: number, variance: number) => {
   return Array.from({ length: points }, (_, i) => {
-    const trend = Math.sin(i * 0.25) * variance;
-    let timeLabel = '';
-    
-    if (isHourly) {
-       timeLabel = `${String(i).padStart(2, '0')}:00`;
-    } else {
-       // 96 points (15 min)
-       const hours = Math.floor(i / 4);
-       const minutes = (i % 4) * 15;
-       timeLabel = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    }
+    // Peak hours: 10-14, 18-21
+    let timeFactor = 1;
+    if ((i >= 10 && i <= 14) || (i >= 18 && i <= 21)) timeFactor = 1.5;
 
+    const val = Math.max(0, Math.floor((base * timeFactor) + (Math.random() - 0.5) * variance));
     return {
-      time: timeLabel,
-      value: Math.max(0, base + trend + (Math.random() - 0.5) * (variance/2)), 
-      value2: Math.max(0, base * 0.6 + Math.cos(i * 0.25) * variance), 
-      value3: Math.max(0, base * 1.1 + trend), 
+      time: `${String(i).padStart(2, '0')}:00`,
+      value: val 
     };
   });
 };
 
-// New: Spot Price Data (Mock 24h)
+// Generate S2 Service Capability Data (Utilization, Available, Queue)
+export const generateServiceCapSeries = (points: number) => {
+  return Array.from({ length: points }, (_, i) => {
+    // Mock profile
+    const peak = (i > 9 && i < 22) ? 0.8 : 0.2;
+    const random = Math.random() * 0.1;
+    const utilization = Math.min(100, Math.max(0, (peak + random) * 100));
+    
+    return {
+      time: `${String(i).padStart(2, '0')}:00`,
+      value: Math.floor(utilization), // Utilization %
+      value2: Math.floor(20 * (1 - (utilization/100))), // Available Piles (Inverse to util)
+      value3: utilization > 80 ? Math.floor(Math.random() * 10) : 0 // Queue Count (Only when busy)
+    };
+  });
+};
+
+export const generateTimeSeries = (points: number, base: number, variance: number) => {
+  return Array.from({ length: points }, (_, i) => {
+    const trend = Math.sin(i * 0.25) * variance;
+    return {
+      time: `${String(i).padStart(2, '0')}:00`,
+      value: Math.max(0, base + trend + (Math.random() - 0.5) * (variance/2)), 
+    };
+  });
+};
+
+// Spot Price Data
 export const SPOT_PRICE_DATA = Array.from({ length: 24 }, (_, i) => {
-  let price = 0.4; // Base price
-  if (i >= 10 && i <= 14) price = 1.2; // Noon Peak
-  else if (i >= 18 && i <= 21) price = 1.5; // Evening Peak
-  else if (i >= 0 && i <= 6) price = 0.25; // Night Valley
-  else price = 0.7; // Flat
+  let price = 0.4; 
+  if (i >= 10 && i <= 14) price = 1.2; 
+  else if (i >= 18 && i <= 21) price = 1.5; 
+  else if (i >= 0 && i <= 6) price = 0.25; 
+  else price = 0.7; 
   
   return {
     time: `${String(i).padStart(2, '0')}:00`,
@@ -175,11 +222,12 @@ export const SPOT_PRICE_DATA = Array.from({ length: 24 }, (_, i) => {
   };
 });
 
-// New: Carbon Factor Data (Mock 24h)
+// Carbon Factor Data
 export const CARBON_FACTOR_DATA = Array.from({ length: 24 }, (_, i) => {
+  // Mock data: fluctuations
   return {
     time: `${String(i).padStart(2, '0')}:00`,
-    value: 0.5 + Math.sin(i * 0.5) * 0.1 + (Math.random() - 0.5) * 0.05 // varies between 0.4 and 0.7
+    value: 0.5 + Math.sin(i * 0.5) * 0.1 + (Math.random() - 0.5) * 0.05
   };
 });
 
@@ -248,4 +296,10 @@ export const PIE_DATA_OPS_STATUS = [
   { name: '运营正常', value: 850 },
   { name: '部分故障', value: 120 },
   { name: '停运维护', value: 30 },
+];
+
+export const PILE_STATUS_BASE = [
+  { name: '空闲待机', value: 3200, color: '#22c55e' },
+  { name: '正在充电', value: 8800, color: '#0ea5e9' },
+  { name: '离线/故障', value: 450, color: '#ef4444' },
 ];
