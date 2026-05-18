@@ -46,15 +46,20 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
   // Helper for coordinate validation
   const isValidLatLng = (pos: any): pos is [number, number] => {
-    return Array.isArray(pos) && pos.length === 2 && typeof pos[0] === 'number' && !isNaN(pos[0]) && typeof pos[1] === 'number' && !isNaN(pos[1]);
+    return Array.isArray(pos) && pos.length === 2 && 
+           typeof pos[0] === 'number' && !isNaN(pos[0]) && 
+           typeof pos[1] === 'number' && !isNaN(pos[1]);
   };
 
   useEffect(() => {
     if (!mapContainer.current) return;
     if (mapInstance.current) return;
 
+    // Use a default center that is guaranteed to be valid
+    const defaultCenter: [number, number] = [22.65, 114.15];
+
     const map = L.map(mapContainer.current, {
-      center: [22.65, 114.15],
+      center: defaultCenter,
       zoom: 10,
       minZoom: 9,
       zoomControl: false,
@@ -140,7 +145,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
         });
 
         polygon.on('click', (e) => {
-          L.DomEvent.stopPropagation(e);
+          if (e && e.originalEvent) {
+             L.DomEvent.stopPropagation(e as any);
+          }
           onDistrictClick(district.id);
         });
         
@@ -165,7 +172,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
                  </div>`,
           iconSize: [0, 0]
         });
-        L.marker(district.center, { icon: labelIcon, interactive: false }).addTo(layerGroup);
+        
+        // Final guard for label marker
+        if (isValidLatLng(district.center)) {
+          L.marker(district.center, { icon: labelIcon, interactive: false }).addTo(layerGroup);
+        }
 
       });
     } else if (selectedDistrictId) {
@@ -194,9 +205,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
     layerGroup.clearLayers();
 
     if (viewState === ViewState.S1_DISTRICT || viewState === ViewState.S2_STATION) {
+      if (!currentStations) return;
+      
       currentStations.forEach(station => {
         // Validation for station position
-        if (!isValidLatLng(station.position)) return;
+        if (!station || !isValidLatLng(station.position)) return;
 
         const isSelected = station.id === selectedStationId;
         
@@ -226,7 +239,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
         const marker = L.marker(station.position, { icon });
 
         marker.on('click', (e) => {
-          L.DomEvent.stopPropagation(e);
+          if (e && e.originalEvent) {
+             L.DomEvent.stopPropagation(e as any);
+          }
           onStationClick(station);
         });
 
@@ -242,15 +257,27 @@ const MapComponent: React.FC<MapComponentProps> = ({
     const map = mapInstance.current;
     
     if (viewState === ViewState.S0_CITY) {
-      map.flyTo([22.65, 114.15], 10, { duration: 1 });
+      map.flyTo([22.65, 114.15], 10, { duration: 1.5 });
+    } else if (viewState === ViewState.S2_STATION && selectedStationId) {
+      // Find station coordinate in current list
+      const station = currentStations.find(s => s.id === selectedStationId);
+      if (station && isValidLatLng(station.position)) {
+        map.flyTo(station.position, 15, { duration: 1.5 });
+      } else if (selectedDistrictId) {
+        // Fallback to district if station not found
+        const district = DISTRICTS.find(d => d.id === selectedDistrictId);
+        if (district && isValidLatLng(district.center)) {
+          map.flyTo(district.center, 13, { duration: 1.5 });
+        }
+      }
     } else if (selectedDistrictId) {
       const district = DISTRICTS.find(d => d.id === selectedDistrictId);
       // Validate center before flying
       if (district && isValidLatLng(district.center)) {
-        map.flyTo(district.center, 13, { duration: 1 });
+        map.flyTo(district.center, 13, { duration: 1.5 });
       }
     }
-  }, [viewState, selectedDistrictId]);
+  }, [viewState, selectedDistrictId, selectedStationId, currentStations]);
 
   return (
     <div className="relative w-full h-full bg-slate-950 overflow-hidden rounded-xl border border-slate-700 shadow-inner group">
@@ -288,7 +315,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
           {viewState === ViewState.S0_CITY ? (
              timeMode === TimeMode.PREDICTION ? (
                <>
-                 <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 border border-white/20"></span> 预测过载 (大于80%)</div>
+                 <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 border border-white/20"></span> 预测过载 (&gt;80%)</div>
                  <div className="flex items-center gap-2"><span className="w-3 h-3 bg-blue-500 border border-white/20"></span> 预测正常</div>
                </>
              ) : (

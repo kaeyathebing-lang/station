@@ -75,7 +75,7 @@ const App: React.FC = () => {
 
         {/* Right Column: Dynamic Analysis */}
         <section className="col-span-3 bg-slate-900/60 rounded-2xl border border-slate-800 p-4 h-full flex flex-col backdrop-blur-xl shadow-2xl">
-           <RightPanel viewState={viewState} timeMode={timeMode} />
+           <RightPanel viewState={viewState} timeMode={timeMode} selectedDistrictId={selectedDistrictId} timelineValue={timelineValue} />
         </section>
 
       </main>
